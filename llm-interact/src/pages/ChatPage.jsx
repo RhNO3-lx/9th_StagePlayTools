@@ -1,0 +1,355 @@
+import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import './ChatPage.css';
+
+// ==================== 预设剧本 ====================
+const SCRIPTED_REPLIES = [
+  `好的，我已收到您的请求。正在为您初始化 Prometheus 的『超导思维』推理引擎...
+
+**核心参数：**
+- 注意力机制：DSAA (动态稀疏激活)
+- 上下文窗口：32k tokens
+- 推理精度：BF16`,
+
+  `模型加载完成。根据您的问题，我通过动态稀疏激活注意力机制（DSAA）检索到，当前 SOTA 性能的核心在于计算复杂度的优化与幻觉抑制。
+
+下面是一段示例代码，演示如何在 Python 中调用 DSAA 层：
+
+\`\`\`python
+import torch
+from prometheus import DSAAttention
+
+# 初始化 DSAA 层
+attn = DSAAttention(
+    hidden_size=4096,
+    num_heads=32,
+    sparsity_ratio=0.7
+)
+
+# 前向传播
+hidden_states = torch.randn(1, 2048, 4096)
+output = attn(hidden_states)
+print(output.shape)  # (1, 2048, 4096)
+\`\`\`
+
+该实现通过动态门控机制，在保证长程依赖的同时，将计算量降低约 47%。`,
+
+  `具体而言，DSAA 将长文本推理的复杂度从 O(n²) 降至 O(n log n)，在 32k token 上下文下效率提升约 47%；同时异构知识图谱对齐技术将事实一致性得分提升至 91.7%。
+
+**评测数据对比：**
+
+| 模型 | MMLU | HumanEval | GSM8K |
+|------|------|-----------|-------|
+| Prometheus (Ours) | **89.7** | **82.4** | **94.2** |
+| GPT-4 | 86.4 | 67.0 | 92.0 |
+| Claude 3 | 88.2 | 76.5 | 91.8 |
+
+> 注：以上数据来自 NeuraCore AI Lab 内部评测。`,
+
+  `当然，以上数据均来自 NeuraCore AI Lab 的内部评测。由于这是预设剧本演示，我能透露的技术细节就到这里了。感谢您的体验！
+
+如果您想了解更底层的实现，可以参考我们的论文草案：
+
+\`\`\`bibtex
+@article{vance2025superconductive,
+  title={Superconductive Thinking: Dynamic Sparse Activation for Efficient Long-Context LLMs},
+  author={Vance, Elias and others},
+  journal={arXiv preprint arXiv:2503.12345},
+  year={2025}
+}
+\`\`\``,
+
+  `（演示结束。若需继续对话，请刷新页面从头开始。）`
+];
+
+// 打字速度
+const TYPING_SPEED = 35;
+
+// 模拟延迟
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ==================== Markdown 渲染组件 ====================
+function MarkdownRenderer({ content }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // 代码块渲染
+        code({ node, inline, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          return !inline && match ? (
+            <SyntaxHighlighter
+              style={oneLight}
+              language={match[1]}
+              PreTag="div"
+              customStyle={{ 
+                borderRadius: '8px', 
+                fontSize: '0.85rem',
+                margin: '12px 0'
+              }}
+              {...props}
+            >
+              {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        },
+        // 链接在新标签页打开
+        a({ href, children }) {
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          );
+        }
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+// ==================== 主组件 ====================
+function ChatPage() {
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [turn, setTurn] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  
+  const messagesEndRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const currentTypingMessageIdRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startTypingEffect = (fullText, messageId) => {
+    let currentIndex = 0;
+    setIsTyping(true);
+
+    const typeNextChar = () => {
+      if (currentIndex < fullText.length) {
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            return {
+              ...msg,
+              content: fullText.slice(0, currentIndex + 1),
+              isStreaming: currentIndex < fullText.length - 1
+            };
+          }
+          return msg;
+        }));
+
+        currentIndex++;
+        const nextDelay = TYPING_SPEED + (Math.random() * 20 - 10);
+        typingTimerRef.current = setTimeout(typeNextChar, nextDelay);
+      } else {
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            return { ...msg, isStreaming: false };
+          }
+          return msg;
+        }));
+        setIsTyping(false);
+        setIsLoading(false);
+        typingTimerRef.current = null;
+        currentTypingMessageIdRef.current = null;
+      }
+    };
+
+    typingTimerRef.current = setTimeout(typeNextChar, TYPING_SPEED);
+  };
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading || isTyping) return;
+
+    const userContent = inputValue.trim();
+    
+    const userMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: userContent,
+      isStreaming: false
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    const replyIndex = Math.min(turn, SCRIPTED_REPLIES.length - 1);
+    const fullReply = SCRIPTED_REPLIES[replyIndex] || "（剧本已结束，感谢您的参与。）";
+
+    await sleep(600 + Math.random() * 400);
+
+    const botMessageId = Date.now() + 1;
+    const botMessage = {
+      id: botMessageId,
+      role: 'assistant',
+      content: '',
+      isStreaming: true
+    };
+    
+    setMessages(prev => [...prev, botMessage]);
+    currentTypingMessageIdRef.current = botMessageId;
+    startTypingEffect(fullReply, botMessageId);
+    setTurn(prev => prev + 1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // 消息内容渲染（使用 Markdown 组件）
+  const renderMessageContent = (msg) => {
+    return (
+      <div className="message-content">
+        <MarkdownRenderer content={msg.content} />
+        {msg.isStreaming && <span className="typing-cursor">▊</span>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="chat-page">
+      <div className="chat-container">
+        {/* 头部 */}
+        <header className="chat-header">
+          <div className="header-left">
+            <span className="logo-emoji">🧠</span>
+            <span className="model-name">Prometheus</span>
+            <span className="badge">SOTA 内测版</span>
+          </div>
+          <div className="header-right">
+            <button className="icon-btn" onClick={() => window.location.reload()} title="新对话">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+            <button className="icon-btn" onClick={() => {}} title="设置" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        {/* 欢迎页 / 对话列表 */}
+        {messages.length === 0 ? (
+          <div className="welcome-screen">
+            <div className="welcome-content">
+              <div className="welcome-logo">🧠</div>
+              <h1 className="welcome-title">体验下一代大语言模型</h1>
+              <p className="welcome-subtitle">
+                基于『超导思维』架构，多项指标达到 SOTA
+              </p>
+              
+              <div className="input-wrapper">
+                <div className="input-container">
+                  <textarea
+                    className="chat-input"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="向 Prometheus 发送消息..."
+                    rows="1"
+                    disabled={isLoading || isTyping}
+                  />
+                  <button 
+                    className="send-btn"
+                    onClick={handleSend}
+                    disabled={!inputValue.trim() || isLoading || isTyping}
+                  >
+                    {isLoading || isTyping ? (
+                      <span className="loading-dots">⋯</span>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="input-hint">
+                  Prometheus 可能产生不准确信息，本演示为预设剧本。
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="messages-list">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`message-row ${msg.role}`}>
+                  <div className="message-avatar">
+                    {msg.role === 'user' ? '👤' : '🧠'}
+                  </div>
+                  <div className="message-bubble-wrapper">
+                    <div className={`message-bubble ${msg.role} ${msg.isStreaming ? 'streaming' : ''}`}>
+                      {renderMessageContent(msg)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="input-area-bottom">
+              <div className="input-container">
+                <textarea
+                  className="chat-input"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="继续对话..."
+                  rows="1"
+                  disabled={isLoading || isTyping}
+                />
+                <button 
+                  className="send-btn"
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || isLoading || isTyping}
+                >
+                  {isLoading || isTyping ? (
+                    <span className="loading-dots">⋯</span>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              <p className="input-hint">
+                Shift + Enter 换行 · 本演示为预设流式输出
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default ChatPage;
