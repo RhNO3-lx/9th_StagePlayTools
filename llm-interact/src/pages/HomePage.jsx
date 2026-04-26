@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import './HomePage.css';
+import logoImg from '../assets/shell.png';    // 机器人头像（可换成其他图）
 
 function HomePage() {
   return (
@@ -8,7 +9,7 @@ function HomePage() {
       <header className="navbar">
         <div className="navbar-container">
           <div className="logo-area">
-            <span className="logo-icon">🧠</span>
+            <img src={logoImg} alt="NeuraCore Logo" className="logo-icon-img" style={{ width: '65px' }} />
             <span className="logo-text">NeuraCore AI Lab</span>
           </div>
           <nav className="nav-links">

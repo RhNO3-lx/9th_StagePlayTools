@@ -277,12 +277,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e9eaf0;
+  background: transparent;
   font-size: 18px;
 }
 
 .message-row.user .message-avatar {
-  background: var(--primary-purple);
+  background: transparent;
   color: white;
 }
 

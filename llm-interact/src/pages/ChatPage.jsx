@@ -5,7 +5,13 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './ChatPage.css';
 
+
+
 // 图片资源
+import userAvatar from '../assets/toyohime.png';   // 用户头像
+import botAvatar from '../assets/nina.png';    // 机器人头像（可换成其他图）
+import topTitle from '../assets/shell.png';     // 顶部标题图标
+import welcomeLogo from '../assets/nina_full.png';  // 欢迎页大图标
 
 // ==================== 预设剧本 ====================
 const SCRIPTED_REPLIES = [
@@ -265,7 +271,7 @@ function ChatPage() {
       <div className="chat-container">
         <header className="chat-header">
           <div className="header-left">
-            <span className="logo-emoji">🧠</span>
+            <img src={topTitle} alt="NeuraCore Logo" className="logo-icon-img" style={{ width: '65px' }} />
             <span className="model-name">Shell Intelligence</span>
             <span className="badge">SOTA 内测版</span>
           </div>
@@ -288,7 +294,7 @@ function ChatPage() {
         {messages.length === 0 ? (
           <div className="welcome-screen">
             <div className="welcome-content">
-              <div className="welcome-logo">🧠</div>
+              <div className="welcome-logo"> <img src={welcomeLogo} alt="Logo" className="welcome-logo-img" /></div>
               <h1 className="welcome-title">体验下一代大语言模型</h1>
               <p className="welcome-subtitle">
                 基于『超导思维』架构，多项指标达到 SOTA
@@ -331,7 +337,13 @@ function ChatPage() {
               {messages.map((msg) => (
                 <div key={msg.id} className={`message-row ${msg.role}`}>
                   <div className="message-avatar">
-                    {msg.role === 'user' ? '👤' : '🧠'}
+                    <div className="message-avatar">
+                      {msg.role === 'user' ? (
+                        <img src={userAvatar} alt="用户" className="avatar-img" style={{ width: '50px' }}/>
+                      ) : (
+                        <img src={botAvatar} alt="机器人" className="avatar-img" style={{ width: '50px' }}/>
+                      )}
+                    </div>
                   </div>
                   <div className="message-bubble-wrapper">
                     <div className={`message-bubble ${msg.role} ${msg.isStreaming ? 'streaming' : ''}`}>
