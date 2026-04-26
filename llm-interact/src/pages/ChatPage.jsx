@@ -5,22 +5,24 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './ChatPage.css';
 
+// 图片资源
+
 // ==================== 预设剧本 ====================
 const SCRIPTED_REPLIES = [
-  `好的，我已收到您的请求。正在为您初始化 Prometheus 的『超导思维』推理引擎...
+  `markdown输出测试：
 
-**核心参数：**
-- 注意力机制：DSAA (动态稀疏激活)
-- 上下文窗口：32k tokens
-- 推理精度：BF16`,
+**标题**
+- itemize 1
+- itemize 2
+- itemize 3`,
 
-  `模型加载完成。根据您的问题，我通过动态稀疏激活注意力机制（DSAA）检索到，当前 SOTA 性能的核心在于计算复杂度的优化与幻觉抑制。
+  `代码段输出测试：
 
 下面是一段示例代码，演示如何在 Python 中调用 DSAA 层：
 
 \`\`\`python
 import torch
-from prometheus import DSAAttention
+from Shell Intelligence import DSAAttention
 
 # 初始化 DSAA 层
 attn = DSAAttention(
@@ -34,16 +36,15 @@ hidden_states = torch.randn(1, 2048, 4096)
 output = attn(hidden_states)
 print(output.shape)  # (1, 2048, 4096)
 \`\`\`
+`,
 
-该实现通过动态门控机制，在保证长程依赖的同时，将计算量降低约 47%。`,
-
-  `具体而言，DSAA 将长文本推理的复杂度从 O(n²) 降至 O(n log n)，在 32k token 上下文下效率提升约 47%；同时异构知识图谱对齐技术将事实一致性得分提升至 91.7%。
+  `表格输出测试
 
 **评测数据对比：**
 
 | 模型 | MMLU | HumanEval | GSM8K |
 |------|------|-----------|-------|
-| Prometheus (Ours) | **89.7** | **82.4** | **94.2** |
+| Shell Intelligence (Ours) | **89.7** | **82.4** | **94.2** |
 | GPT-4 | 86.4 | 67.0 | 92.0 |
 | Claude 3 | 88.2 | 76.5 | 91.8 |
 
@@ -65,11 +66,46 @@ print(output.shape)  # (1, 2048, 4096)
   `（演示结束。若需继续对话，请刷新页面从头开始。）`
 ];
 
-// 打字速度
 const TYPING_SPEED = 35;
-
-// 模拟延迟
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ==================== 代码块包装组件 ====================
+function CodeBlock({ language, code }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('复制失败:', err);
+    }
+  };
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-language">{language || 'text'}</span>
+        <button className="copy-button" onClick={handleCopy}>
+          {copied ? '已复制' : '复制'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={oneLight}
+        language={language}
+        PreTag="div"
+        customStyle={{ 
+          margin: 0,
+          borderRadius: '0 0 8px 8px',
+          fontSize: '0.85rem'
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
 
 // ==================== Markdown 渲染组件 ====================
 function MarkdownRenderer({ content }) {
@@ -77,30 +113,24 @@ function MarkdownRenderer({ content }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        // 代码块渲染
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
-          return !inline && match ? (
-            <SyntaxHighlighter
-              style={oneLight}
-              language={match[1]}
-              PreTag="div"
-              customStyle={{ 
-                borderRadius: '8px', 
-                fontSize: '0.85rem',
-                margin: '12px 0'
-              }}
-              {...props}
-            >
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>
-          ) : (
+          const codeString = String(children).replace(/\n$/, '');
+          
+          if (!inline && match) {
+            return <CodeBlock language={match[1]} code={codeString} />;
+          }
+          
+          if (!inline) {
+            return <CodeBlock language="text" code={codeString} />;
+          }
+          
+          return (
             <code className={className} {...props}>
               {children}
             </code>
           );
         },
-        // 链接在新标签页打开
         a({ href, children }) {
           return (
             <a href={href} target="_blank" rel="noopener noreferrer">
@@ -221,7 +251,6 @@ function ChatPage() {
     }
   };
 
-  // 消息内容渲染（使用 Markdown 组件）
   const renderMessageContent = (msg) => {
     return (
       <div className="message-content">
@@ -234,11 +263,10 @@ function ChatPage() {
   return (
     <div className="chat-page">
       <div className="chat-container">
-        {/* 头部 */}
         <header className="chat-header">
           <div className="header-left">
             <span className="logo-emoji">🧠</span>
-            <span className="model-name">Prometheus</span>
+            <span className="model-name">Shell Intelligence</span>
             <span className="badge">SOTA 内测版</span>
           </div>
           <div className="header-right">
@@ -257,7 +285,6 @@ function ChatPage() {
           </div>
         </header>
 
-        {/* 欢迎页 / 对话列表 */}
         {messages.length === 0 ? (
           <div className="welcome-screen">
             <div className="welcome-content">
@@ -274,7 +301,7 @@ function ChatPage() {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="向 Prometheus 发送消息..."
+                    placeholder="向 Shell Intelligence 发送消息..."
                     rows="1"
                     disabled={isLoading || isTyping}
                   />
@@ -292,9 +319,9 @@ function ChatPage() {
                     )}
                   </button>
                 </div>
-                <p className="input-hint">
-                  Prometheus 可能产生不准确信息，本演示为预设剧本。
-                </p>
+                {/* <p className="input-hint">
+                  Shell Intelligence 可能产生不准确信息，本演示为预设剧本。
+                </p> */}
               </div>
             </div>
           </div>
@@ -341,9 +368,9 @@ function ChatPage() {
                   )}
                 </button>
               </div>
-              <p className="input-hint">
+              {/* <p className="input-hint">
                 Shift + Enter 换行 · 本演示为预设流式输出
-              </p>
+              </p> */}
             </div>
           </>
         )}
