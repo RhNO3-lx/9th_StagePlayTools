@@ -139,9 +139,9 @@ export default function App() {
     setModalStep(0);
     playSentence(s2_dead);
     document.body.style.overflow = '';
-    setTimeout(() => {
-      window.close();
-    }, 800);
+    // setTimeout(() => {
+    //   window.close();
+    // }, 1800);
   };
 
   return (
