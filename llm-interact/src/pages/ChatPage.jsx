@@ -5,7 +5,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './ChatPage.css';
 
-
+const CHUNK_SIZE = 80;          // 每次输出的字符数
+const CHUNK_INTERVAL = 10;     // 每块的间隔（毫秒），可调整
 
 // 图片资源
 import userAvatar from '../assets/toyohime.png';   // 用户头像
@@ -15,32 +16,571 @@ import welcomeLogo from '../assets/nina_full.png';  // 欢迎页大图标
 
 // ==================== 预设剧本 ====================
 const SCRIPTED_REPLIES = [
-  `markdown输出测试：
+  `我是shell intelligence，会写代码，想创意。请把你想完成的任务交给我吧！`,
+`
+好的，根据你的需求，以下是我为您生成的污秽处理代码，可以直接粘贴进react前端项目中使用
 
-**标题**
-- itemize 1
-- itemize 2
-- itemize 3`,
 
-  `代码段输出测试：
+**App.jsx**
+\`\`\`jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Terminal, ShieldAlert } from 'lucide-react';
+import s1_1 from './assets/sentence1-1.mp3';
+import s1_2 from './assets/sentence1-2.mp3';
+import s2_1 from './assets/sentence2-1.mp3';
+import s2_2 from './assets/sentence2-2.mp3';
+import s2_3 from './assets/sentence2-3.mp3';
+import s2_4 from './assets/sentence2-4.mp3';
+import s2_explosion from './assets/explosion7.ogg';
+import s2_dead from './assets/se_pldead00.wav';
 
-下面是一段示例代码，演示如何在 Python 中调用 DSAA 层：
+import nina from './assets/nina_full.png';
+import './App.css';
 
-\`\`\`python
-import torch
-from Shell Intelligence import DSAAttention
+// --- 弹窗组件 ---
+const MessageModal = ({ isOpen, onClose, title, content, avatar, colorClass = "modal-cyan" }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="modal-backdrop">
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="modal-overlay"
+        />
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0, y: 100 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0, opacity: 0 }}
+          className={\`modal-card \${colorClass}\`}
+        >
+          <div className="modal-header">
+            <div className="modal-avatar-box">
+              {avatar || <ShieldAlert className="modal-avatar-icon" />}
+            </div>
+            <h3 className="modal-title">{title}</h3>
+          </div>
+          {content && <p className="modal-content">{content}</p>}
+          <button onClick={onClose} className="modal-button">
+            确认
+          </button>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
 
-# 初始化 DSAA 层
-attn = DSAAttention(
-    hidden_size=4096,
-    num_heads=32,
-    sparsity_ratio=0.7
-)
+export default function App() {
+  const [mode, setMode] = useState('IDLE');
+  const [data, setData] = useState(new Array(30).fill(15));
+  const [modalStep, setModalStep] = useState(0);
+  const [isFreeze, setIsFreeze] = useState(false);
+  const [isCrashed, setIsCrashed] = useState(false);
 
-# 前向传播
-hidden_states = torch.randn(1, 2048, 4096)
-output = attn(hidden_states)
-print(output.shape)  # (1, 2048, 4096)
+  const timerRef = useRef(null);
+
+  const playSentence = (sentence) => {
+    const audio = new Audio(sentence);
+    audio.volume = 0.6;
+    audio.play().catch(() => {});
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isFreeze && modalStep === 6 && e.key !== 'escape') return;
+      if (modalStep !== 0 && e.key !== 'escape') return;
+      const key = e.key.toLowerCase();
+      if (key === 'q') {
+        playSentence(s1_1);
+        setMode('HIGH');
+        setModalStep(1);
+      } else if (key === 'w') {
+        playSentence(s1_2);
+        setMode('IDLE');
+        setModalStep(2);
+      } else if (key === 'e') {
+        setModalStep(10);
+      } else if (key === 'r') {
+        setMode('CRITICAL');
+        setModalStep(3);
+        playSentence(s2_1);
+      } else if (key === 'escape') {
+        setMode('IDLE');
+        setModalStep(0);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalStep, isFreeze]);
+
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!isFreeze && !isCrashed) {
+      timerRef.current = setInterval(() => {
+        setData(prev => {
+          const newData = [...prev.slice(1)];
+          let nextVal;
+          if (mode === 'CRITICAL') nextVal = Math.random() * 80 + 130;
+          else if (mode === 'HIGH') nextVal = Math.random() * 20 + 70;
+          else nextVal = Math.random() * 10 + 10;
+          return [...newData, nextVal];
+        });
+      }, 120);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [mode, isFreeze, isCrashed]);
+
+  useEffect(() => {
+    if (modalStep === 6) {
+      setIsFreeze(true);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [modalStep]);
+
+  const handleCloseModal = () => {
+    const sentenceList = [s2_1, s2_2, s2_3, s2_4];
+    if (modalStep === 5) {
+      playSentence(s2_explosion);
+      playSentence(sentenceList[3]);
+    }
+    if (modalStep < 5) {
+      const nextIndex = modalStep - 2;
+      if (nextIndex >= 0 && nextIndex <= sentenceList.length) {
+        playSentence(sentenceList[nextIndex]);
+      }
+      setModalStep(modalStep + 1);
+    } else if (modalStep === 5) {
+      setModalStep(6);
+    } else {
+      setModalStep(0);
+    }
+  };
+
+  const finalClose = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsCrashed(true);
+    setModalStep(0);
+    playSentence(s2_dead);
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      window.close();
+    }, 800);
+  };
+
+  return (
+    <div className="app-container">
+      {isCrashed && (
+        <div className="crash-screen">
+          <div className="crash-content">
+            <pre className="crash-text">⚡ 似了 ⚡</pre>
+            <p className="crash-sub">你个活爹，辛辛苦苦训出来的AI被你用污秽活活撑死了</p>
+          </div>
+        </div>
+      )}
+
+      {/* 顶部状态栏 */}
+      <div className="top-bar">
+        <div className="top-left">
+          <div className="icon-box">
+            <Terminal size={32} />
+          </div>
+          <div>
+            <h1 className="site-title">S.H.I.T. ── 同步异构智能污染监控</h1>
+            <div className="status-line">
+              <span>INPUT_BUFFER: ACTIVE</span>
+              <span>ENCRYPTION: RSA_4096</span>
+            </div>
+          </div>
+        </div>
+        <div className="top-right">
+          <div className={\`mode-indicator \${mode === 'CRITICAL' ? 'critical' : 'normal'}\`}>
+            MODE: {mode}
+          </div>
+          <div className="time-display">LOCAL_TIME: {new Date().toLocaleTimeString()}</div>
+        </div>
+      </div>
+
+      {/* 居中监控框 */}
+      <div className="monitor-box">
+        <div className="corner-tr" />
+        <div className="corner-bl" />
+        <div className="chart-area">
+          <div className="y-axis">
+            <span>200%</span>
+            <span>150%</span>
+            <span>100%</span>
+            <span>50%</span>
+            <span>0%</span>
+          </div>
+          {data.map((val, i) => (
+            <motion.div
+              key={i}
+              animate={{
+                height: \`\${val}%\`,
+                backgroundColor: val > 100 ? '#dc2626' : (val > 65 ? '#d97706' : '#542e91')
+              }}
+              className="bar"
+              style={{ boxShadow: val > 100 ? '0 0 15px #dc2626' : 'none' }}
+            />
+          ))}
+          <div className="threshold">
+            <span>OVERFLOW_THRESHOLD</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 假死遮罩 */}
+      {modalStep === 6 && !isCrashed && <div className="freeze-overlay" />}
+
+      {/* 弹窗 */}
+      <MessageModal
+        isOpen={modalStep === 1}
+        onClose={() => setModalStep(0)}
+        title="完了呀老师，这个代码会涨潮的喔"
+      />
+      <MessageModal
+        isOpen={modalStep === 2}
+        onClose={() => setModalStep(0)}
+        title="又退潮啦"
+      />
+      <MessageModal
+        isOpen={modalStep === 3}
+        onClose={handleCloseModal}
+        title="老师救命啊，堆栈溢出了啊，爆辣！"
+        colorClass="modal-red"
+      />
+      <MessageModal
+        isOpen={modalStep === 4}
+        onClose={handleCloseModal}
+        title="这个污秽炸出来啦"
+        colorClass="modal-amber"
+      />
+      <MessageModal
+        isOpen={modalStep === 5}
+        onClose={handleCloseModal}
+        title="丰姬老师这个污秽炸出来了哇"
+        colorClass="modal-amber"
+      />
+      <MessageModal
+        isOpen={modalStep === 6}
+        onClose={finalClose}
+        title="爆出来了哇老师"
+        colorClass="modal-amber"
+      />
+      <MessageModal
+        isOpen={modalStep === 10}
+        onClose={() => setModalStep(0)}
+        title="此乃真实！"
+        avatar={<img src={nina} alt="nina" className="avatar-img" />}
+        colorClass="modal-purple"
+      />
+    </div>
+  );
+}
+\`\`\`
+
+**App.css**
+\`\`\`css
+/* 与首页统一的蓝紫色系 */
+:root {
+  --primary-purple: #542e91;
+  --primary-blue: #2b5797;
+  --accent-cyan: #06b6d4;
+  --bg-main: #f5f7fa;
+  --text-dark: #1e1e2a;
+  --text-light: #5a5a6e;
+  --border-light: #e2e6ee;
+  --red: #dc2626;
+  --amber: #d97706;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 主容器 ---------- */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  background: var(--bg-main);
+}
+
+/* ---------- 崩溃画面 ---------- */
+.crash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crash-content {
+  text-align: center;
+  color: white;
+}
+.crash-text {
+  font-size: 3.5rem;
+  color: #dc2626;
+  font-family: monospace;
+  margin: 0 0 20px;
+  animation: pulse 1s infinite;
+}
+.crash-sub {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.8);
+  margin: 0;
+}
+
+/* ---------- 顶部状态栏 ---------- */
+.top-bar {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 50px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.top-left {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.icon-box {
+  border: 2px solid var(--primary-purple);
+  background: rgba(84,46,145,0.1);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-purple);
+}
+.site-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dark);
+  margin: 0;
+}
+.status-line {
+  display: flex;
+  gap: 20px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-family: monospace;
+}
+.top-right {
+  text-align: right;
+}
+.mode-indicator {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--primary-purple);
+  transition: color 0.2s;
+}
+.mode-indicator.critical {
+  color: var(--red);
+  animation: pulse 0.8s infinite;
+}
+.time-display {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 6px;
+  font-family: monospace;
+}
+
+/* ---------- 监控框 ---------- */
+.monitor-box {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 40px 30px 30px;
+  box-shadow: 0 8px 20px rgba(84,46,145,0.04);
+}
+.corner-tr {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border-top: 3px solid var(--primary-purple);
+  border-right: 3px solid var(--primary-purple);
+  border-radius: 0 12px 0 0;
+}
+.corner-bl {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-bottom: 3px solid var(--primary-purple);
+  border-left: 3px solid var(--primary-purple);
+  border-radius: 0 0 0 12px;
+}
+.chart-area {
+  height: 240px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-light);
+  position: relative;
+}
+.y-axis {
+  position: absolute;
+  left: -60px;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.7rem;
+  color: var(--text-light);
+  font-family: monospace;
+  text-align: right;
+  width: 50px;
+}
+.bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 2px 2px 0 0;
+  transition: background-color 0.1s;
+}
+.threshold {
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--red) 0 4px, transparent 4px 8px);
+  border-top: none;
+}
+.threshold span {
+  position: absolute;
+  right: 0;
+  top: -20px;
+  font-size: 0.7rem;
+  color: var(--red);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- 假死遮罩 ---------- */
+.freeze-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* ---------- 弹窗组件 ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+}
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+}
+.modal-card {
+  position: relative;
+  background: white;
+  border-width: 3px;
+  border-style: solid;
+  padding: 30px;
+  width: 380px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+  pointer-events: auto;
+  border-radius: 8px;
+}
+.modal-card.modal-cyan { border-color: var(--accent-cyan); }
+.modal-card.modal-red { border-color: var(--red); }
+.modal-card.modal-amber { border-color: var(--amber); }
+.modal-card.modal-purple { border-color: var(--primary-purple); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.modal-avatar-box {
+  width: 56px;
+  height: 56px;
+  border: 3px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: inherit;
+}
+.modal-avatar-icon {
+  width: 28px;
+  height: 28px;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dark);
+  margin: 0;
+  text-transform: uppercase;
+}
+.modal-content {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+.modal-button {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid currentColor;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-transform: uppercase;
+}
+.modal-button:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+/* ---------- 动画 ---------- */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 \`\`\`
 `,
 
@@ -72,7 +612,7 @@ print(output.shape)  # (1, 2048, 4096)
   `（演示结束。若需继续对话，请刷新页面从头开始。）`
 ];
 
-const TYPING_SPEED = 35;
+const TYPING_SPEED = 0.1;
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ==================== 代码块包装组件 ====================
@@ -151,6 +691,7 @@ function MarkdownRenderer({ content }) {
   );
 }
 
+let chunk_size_ratio=0.5;
 // ==================== 主组件 ====================
 function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -183,37 +724,42 @@ function ChatPage() {
     let currentIndex = 0;
     setIsTyping(true);
 
-    const typeNextChar = () => {
+    const pushChunk = () => {
       if (currentIndex < fullText.length) {
-        setMessages(prev => prev.map(msg => {
-          if (msg.id === messageId) {
-            return {
-              ...msg,
-              content: fullText.slice(0, currentIndex + 1),
-              isStreaming: currentIndex < fullText.length - 1
-            };
-          }
-          return msg;
-        }));
+        // 计算下一个块的结束位置
+        chunk_size_ratio+=0.05;
+        const nextIndex = Math.min(currentIndex + CHUNK_SIZE*chunk_size_ratio, fullText.length);
+        const newContent = fullText.slice(0, nextIndex);
+        const isFinished = nextIndex >= fullText.length;
 
-        currentIndex++;
-        const nextDelay = TYPING_SPEED + (Math.random() * 20 - 10);
-        typingTimerRef.current = setTimeout(typeNextChar, nextDelay);
-      } else {
-        setMessages(prev => prev.map(msg => {
-          if (msg.id === messageId) {
-            return { ...msg, isStreaming: false };
-          }
-          return msg;
-        }));
-        setIsTyping(false);
-        setIsLoading(false);
-        typingTimerRef.current = null;
-        currentTypingMessageIdRef.current = null;
+        setMessages(prev =>
+          prev.map(msg => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                content: newContent,
+                isStreaming: !isFinished
+              };
+            }
+            return msg;
+          })
+        );
+
+        currentIndex = nextIndex;
+
+        if (isFinished) {
+          // 输出完毕
+          setIsTyping(false);
+          setIsLoading(false);
+        } else {
+          // 继续下一块
+          setTimeout(pushChunk, CHUNK_INTERVAL);
+        }
       }
     };
 
-    typingTimerRef.current = setTimeout(typeNextChar, TYPING_SPEED);
+    // 首次调度（可加一点小延迟模拟思考）
+    setTimeout(pushChunk, 200);
   };
 
   const handleSend = async () => {
