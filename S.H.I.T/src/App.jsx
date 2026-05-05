@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, AlertTriangle, Zap, Terminal, ShieldAlert } from 'lucide-react';
+import s1_1 from './assets/sentence1-1.mp3';
+import s1_2 from './assets/sentence1-2.mp3';
+import s2_1 from './assets/sentence2-1.mp3';
+import s2_2 from './assets/sentence2-2.mp3';
+import s2_3 from './assets/sentence2-3.mp3';
+import s2_4 from './assets/sentence2-4.mp3';
+import s2_explosion from './assets/explosion7.ogg';
 
 // --- 弹窗组件 ---
 const MessageModal = ({ isOpen, onClose, title, content, avatar, colorClass = "border-cyan-500" }) => (
@@ -25,12 +32,12 @@ const MessageModal = ({ isOpen, onClose, title, content, avatar, colorClass = "b
             <h3 className="font-bold tracking-tighter uppercase text-sm">{title}</h3>
           </div>
           <p className="text-slate-300 font-mono text-xs leading-relaxed">{content}</p>
-          <div className="mt-4 text-[9px] opacity-30 animate-pulse uppercase">Press any key or click to ack</div>
+          {/* <div className="mt-4 text-[9px] opacity-30 animate-pulse uppercase">Press any key or click to ack</div> */}
           <button 
             onClick={onClose}
             className={`mt-4 w-full py-1 border ${colorClass} hover:bg-white/10 transition-colors font-mono text-[10px]`}
           >
-            CLOSE_TERMINAL_WINDOW
+            确认
           </button>
         </motion.div>
       </div>
@@ -53,23 +60,37 @@ export default function App() {
     audio.play().catch(() => {});
   };
 
+  const playSentence = (sentence) => {
+    const audio = new Audio(sentence);
+    audio.volume = 0.4;
+    audio.play().catch(() => {});
+  };
+
   // 监听键盘事件
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
-      
-      if (key === 'q') {
-        setModalStep(1);
-        playAlertSound();
-      } else if (key === 'w') {
-        setModalStep(2);
-        playAlertSound();
+      // 如果弹窗打开，只允许 Escape 键关闭弹窗，其他键无效
+      if (modalStep !== 0 && key !== 'escape') {
+        return;
+      }
+      // if (key === 'a') {
+      //   setModalStep(10); // 触发a弹窗：此乃虚构
+      // }
+      if (key === 'q') {// 触发Q弹窗：s1-1
+        playSentence(s1_1);               // 先播放音效
+        setMode('HIGH');
+        setModalStep(1);                  // 最后再开弹窗
+      } else if (key === 'w') {//s1-2
+        playSentence(s1_2);               // 先播放音效
+        setMode('IDLE');
+        setModalStep(2);                  // 最后再开弹窗
       } else if (key === 'e') {
         setMode(prev => prev === 'HIGH' ? 'IDLE' : 'HIGH');
       } else if (key === 'r') {
         setMode('CRITICAL');
         setModalStep(3); // 触发失控序列第一个窗
-        playAlertSound('critical');
+        playSentence(s2_1); 
       } else if (key === 'escape') {
         setMode('IDLE');
         setModalStep(0);
@@ -95,15 +116,29 @@ export default function App() {
     return () => clearInterval(timer);
   }, [mode]);
 
-  // 处理R键弹窗序列的关闭
+  // 弹窗序列逻辑
   const handleCloseModal = () => {
-    if (modalStep === 3) {
-      setModalStep(4); // 关掉第一个，自动跳出第二个
-      playAlertSound('critical');
+    if (modalStep==5){
+      //我希望在这里让网页后面假装死机
+      playSentence(s2_explosion);
+    }
+    if (modalStep <= 4) {
+
+      setModalStep(modalStep + 1); // 关掉第一个，自动跳出第二个
+      // setModalStep(4); // 关掉第一个，自动跳出第二个
+      const sentence_index=modalStep-2;
+      if(sentence_index>=0){
+        playSentence(eval(`s2_${sentence_index+1}`)); // 先播放音效
+      }
+      // playAlertSound('critical');
     } else {
       setModalStep(0);
     }
   };
+
+  const finalClose=()=>{
+    //我还希望直接让这个网页关闭
+  }
 
   return (
     <div className="min-h-screen bg-[#050505] text-cyan-500 p-10 font-mono flex flex-col items-center overflow-hidden">
@@ -115,7 +150,7 @@ export default function App() {
             <Terminal size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-[0.2em] text-white">SYS_COMMAND_CENTER</h1>
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-white">Synchornized Heterogeneous Intelligence for Taint </h1>
             <div className="flex gap-4 mt-1">
               <span className="text-[10px] text-cyan-700">INPUT_BUFFER: ACTIVE</span>
               <span className="text-[10px] text-cyan-700">ENCRYPTION: RSA_4096</span>
@@ -168,7 +203,7 @@ export default function App() {
       </div>
 
       {/* 底部操作说明 - 代替了原来的按钮 */}
-      <div className="mt-20 flex gap-8">
+      {/* <div className="mt-20 flex gap-8">
         {[
           { key: 'Q', desc: 'SYSTEM_LOG' },
           { key: 'W', desc: 'ACCESS_TRACE' },
@@ -183,40 +218,54 @@ export default function App() {
             <span className="text-[9px] mt-2 text-cyan-800 font-bold">{item.desc}</span>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* 弹窗逻辑 */}
       <MessageModal 
         isOpen={modalStep === 1} 
         onClose={() => setModalStep(0)}
-        title="Diagnostic Log [Q]"
-        content="Kernel trace active. No significant anomalies found in sector 7G. Memory usage: 14%."
+        title="完了呀老师，这个代码会涨潮的喔"
       />
 
       <MessageModal 
         isOpen={modalStep === 2} 
         onClose={() => setModalStep(0)}
-        title="Access Trace [W]"
-        content="Incoming connection from Proxy_Node_882. Handshake confirmed. Level 2 clearance granted."
-        colorClass="border-blue-500 text-blue-400"
+        title="又退潮啦"
+        // content="Incoming connection from Proxy_Node_882. Handshake confirmed. Level 2 clearance granted."
+        // colorClass="border-blue-500 text-blue-400"
       />
 
       <MessageModal 
         isOpen={modalStep === 3} 
         onClose={handleCloseModal}
-        title="!!! SYSTEM FAILURE !!!"
-        content="WARNING: Data corruption detected in primary buffer. R-Key injection successful. System is overflowing!"
+        title="老师救命啊，堆栈溢出了啊，爆辣！"
+        // content="WARNING: Data corruption detected in primary buffer. R-Key injection successful. System is overflowing!"
         colorClass="border-red-600 text-red-500"
       />
 
       <MessageModal 
         isOpen={modalStep === 4} 
-        onClose={() => setModalStep(0)}
-        title="CRITICAL BREACH"
-        content="Secondary containment failed. Emergency shutdown bypassed. Unauthorized data transfer in progress..."
+        onClose={handleCloseModal}
+        title="这个污秽炸出来啦"
+        // content="Secondary containment failed. Emergency shutdown bypassed. Unauthorized data transfer in progress..."
         colorClass="border-amber-600 text-amber-500"
       />
 
+      <MessageModal 
+        isOpen={modalStep === 5} 
+        onClose={handleCloseModal}
+        title="丰姬老师这个污秽炸出来了哇"
+        // content="Secondary containment failed. Emergency shutdown bypassed. Unauthorized data transfer in progress..."
+        colorClass="border-amber-600 text-amber-500"
+      />
+
+      <MessageModal 
+        isOpen={modalStep === 6} 
+        onClose={finalClose}
+        title="爆出来了哇老师"
+        // content="Secondary containment failed. Emergency shutdown bypassed. Unauthorized data transfer in progress..."
+        colorClass="border-amber-600 text-amber-500"
+      />
     </div>
   );
 }
