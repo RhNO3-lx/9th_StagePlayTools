@@ -174,7 +174,7 @@ export default function App() {
       {isCrashed && (
         <div className="crash-screen">
           <div className="crash-content">
-            <pre className="crash-text">⚡ 似了 ⚡</pre>
+            <pre className="crash-text">💩 似了 💩</pre>
             <p className="crash-sub">你个活爹，辛辛苦苦训出来的AI被你用污秽活活撑死了</p>
           </div>
         </div>

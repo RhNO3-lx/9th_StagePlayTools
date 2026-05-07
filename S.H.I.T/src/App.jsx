@@ -149,7 +149,7 @@ export default function App() {
       {isCrashed && (
         <div className="crash-screen">
           <div className="crash-content">
-            <pre className="crash-text">⚡ 似了 ⚡</pre>
+            <pre className="crash-text">💩似了💩</pre>
             <p className="crash-sub">你个活爹，辛辛苦苦训出来的AI被你用污秽活活撑死了</p>
           </div>
         </div>
@@ -248,6 +248,7 @@ export default function App() {
         isOpen={modalStep === 10}
         onClose={() => setModalStep(0)}
         title="此乃真实！"
+        content="你好，我是Nina，我可以帮你写代码，想灵感，请把你的任务交给我吧？"
         avatar={<img src={nina} alt="nina" className="avatar-img" />}
         colorClass="modal-purple"
       />
